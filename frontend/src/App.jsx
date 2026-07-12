@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute, GuestRoute } from './components/ProtectedRoute';
 import Home from './pages/Home';
-import Profile from './pages/Profile';
+import Profile from './pages/temp';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import UserDashboard from './pages/UserDashboard';
