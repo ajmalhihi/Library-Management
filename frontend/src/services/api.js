@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: 'http://localhost:8000/api/',
+  baseURL: 'https://library-management-sl2c.onrender.com/api/',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -24,20 +24,28 @@ API.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    
+
     // Prevent infinite loop by checking if retry was already attempted
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+    if (
+      error.response &&
+      error.response.status === 401 &&
+      !originalRequest._retry
+    ) {
       originalRequest._retry = true;
       const refreshToken = localStorage.getItem('refreshToken');
-      
+
       if (refreshToken) {
         try {
-          const res = await axios.post('http://localhost:8000/api/auth/token/refresh/', {
-            refresh: refreshToken,
-          });
+          const res = await axios.post(
+            'https://library-management-sl2c.onrender.com/api/auth/token/refresh/',
+            {
+              refresh: refreshToken,
+            }
+          );
+
           const newAccessToken = res.data.access;
           localStorage.setItem('token', newAccessToken);
-          
+
           // Retry the original request with new access token
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
           return API(originalRequest);
@@ -46,15 +54,16 @@ API.interceptors.response.use(
           localStorage.removeItem('token');
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
-          
-          // Gracefully notify user on Login redirect
+
           if (!window.location.pathname.includes('/login')) {
             window.location.href = '/login?expired=true';
           }
+
           return Promise.reject(refreshError);
         }
       }
     }
+
     return Promise.reject(error);
   }
 );
