@@ -5,12 +5,9 @@ import re
 
 User = get_user_model()
 
+
 class UserSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='first_name')
-
-    class Model:
-        model = User
-        fields = ['id', 'name', 'email', 'role']
 
     class Meta:
         model = User
@@ -25,17 +22,13 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['name', 'email', 'password', 'confirm_password', 'role']
-        extra_kwargs = {
-            'email': {'required': True},
-            'role': {'required': True}
-        }
 
     def validate_email(self, value):
         value = value.lower()
         if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("A user with this email address already exists.")
-        
-        # Email format check
+            raise serializers.ValidationError(
+                "A user with this email address already exists."
+            )
         email_regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
         if not re.match(email_regex, value):
             raise serializers.ValidationError("Enter a valid email address.")
@@ -43,22 +36,22 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def validate_password(self, value):
         if len(value) < 8:
-            raise serializers.ValidationError("Password must be at least 8 characters long.")
+            raise serializers.ValidationError(
+                "Password must be at least 8 characters long."
+            )
         return value
 
     def validate(self, data):
         if data.get('password') != data.get('confirm_password'):
-            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+            raise serializers.ValidationError({
+                "confirm_password": "Passwords do not match."
+            })
         return data
 
     def create(self, validated_data):
-        # Remove confirm_password as it's not a model field
         validated_data.pop('confirm_password')
         password = validated_data.pop('password')
-        
-        # Extract name (mapped to first_name in Meta)
         first_name = validated_data.pop('first_name')
-        
         user = User.objects.create_user(
             email=validated_data['email'].lower(),
             password=password,
@@ -74,7 +67,6 @@ class BookSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'author', 'genre', 'description', 'image_url', 'is_available']
 
     def validate_title(self, value):
-        # Exclude current instance in case of update
         instance = self.instance
         queryset = Book.objects.filter(title__iexact=value)
         if instance:
@@ -86,18 +78,34 @@ class BookSerializer(serializers.ModelSerializer):
 
 class RentalSerializer(serializers.ModelSerializer):
     is_overdue = serializers.ReadOnlyField()
+    days_remaining = serializers.ReadOnlyField()
+    can_renew = serializers.ReadOnlyField()
 
     class Meta:
         model = Rental
-        fields = ['id', 'user', 'book', 'borrow_date', 'due_date', 'return_date', 'is_returned', 'is_overdue']
-        read_only_fields = ['user', 'borrow_date', 'due_date', 'return_date', 'is_returned', 'is_overdue']
+        fields = [
+            'id', 'user', 'book', 'borrow_date', 'due_date',
+            'return_date', 'is_returned', 'renewal_count',
+            'days_remaining', 'can_renew', 'is_overdue', 'auto_returned'
+        ]
+        read_only_fields = [
+            'user', 'borrow_date', 'due_date', 'return_date',
+            'is_returned', 'renewal_count', 'days_remaining',
+            'can_renew', 'is_overdue', 'auto_returned'
+        ]
 
 
 class RentalDetailedSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     book = BookSerializer(read_only=True)
     is_overdue = serializers.ReadOnlyField()
+    days_remaining = serializers.ReadOnlyField()
+    can_renew = serializers.ReadOnlyField()
 
     class Meta:
         model = Rental
-        fields = ['id', 'user', 'book', 'borrow_date', 'due_date', 'return_date', 'is_returned', 'is_overdue']
+        fields = [
+            'id', 'user', 'book', 'borrow_date', 'due_date',
+            'return_date', 'is_returned', 'renewal_count',
+            'days_remaining', 'can_renew', 'is_overdue', 'auto_returned'
+        ]

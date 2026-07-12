@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { User as UserIcon, Mail, Lock, BookOpen, AlertCircle } from 'lucide-react';
+import { User as UserIcon, Mail, Lock, BookOpen, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
 
 const Register = () => {
   const { register } = useContext(AuthContext);
@@ -11,43 +11,117 @@ const Register = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [loading, setLoading] = useState(false);
   const [apiErrors, setApiErrors] = useState({});
 
-  const validateForm = () => {
-    const formErrors = {};
+  // Password strength checker
+  const getPasswordStrength = (pwd) => {
+    let score = 0;
+    const checks = {
+      length: pwd.length >= 8,
+      uppercase: /[A-Z]/.test(pwd),
+      lowercase: /[a-z]/.test(pwd),
+      number: /[0-9]/.test(pwd),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(pwd),
+    };
+    score = Object.values(checks).filter(Boolean).length;
+    return { score, checks };
+  };
+
+  const passwordStrength = getPasswordStrength(password);
+
+  const getStrengthLabel = (score) => {
+    if (score <= 1) return { label: 'Very Weak', color: 'bg-rose-500' };
+    if (score === 2) return { label: 'Weak', color: 'bg-orange-500' };
+    if (score === 3) return { label: 'Fair', color: 'bg-yellow-500' };
+    if (score === 4) return { label: 'Strong', color: 'bg-emerald-500' };
+    return { label: 'Very Strong', color: 'bg-emerald-400' };
+  };
+
+  const strengthInfo = getStrengthLabel(passwordStrength.score);
+
+  // Validate single field
+  const validateField = (fieldName, value) => {
     const emailRegex = /^[^\s@]+@gmail\.com$/;
+    const nameRegex = /^[a-zA-Z\s]+$/;
 
-    if (!name.trim()) formErrors.name = 'Full name is required';
-
-    if (!email.trim()) {
-      formErrors.email = 'Email address is required';
-    } else if (!emailRegex.test(email.trim())) {
-      formErrors.email = 'Only Gmail addresses are allowed (e.g. name@gmail.com)';
+    switch (fieldName) {
+      case 'name':
+        if (!value.trim()) return 'Full name is required';
+        if (!nameRegex.test(value.trim())) return 'Name cannot contain numbers or special characters';
+        if (value.trim().length < 3) return 'Name must be at least 3 characters';
+        return '';
+      case 'email':
+        if (!value.trim()) return 'Email address is required';
+        if (!emailRegex.test(value.trim())) return 'Only Gmail addresses allowed (e.g. name@gmail.com)';
+        return '';
+      case 'password':
+        if (!value) return 'Password is required';
+        if (value.length < 8) return 'Password must be at least 8 characters';
+        if (!/[A-Z]/.test(value)) return 'Password must contain at least one uppercase letter';
+        if (!/[0-9]/.test(value)) return 'Password must contain at least one number';
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) return 'Password must contain at least one special character';
+        return '';
+      case 'confirmPassword':
+        if (!value) return 'Please confirm your password';
+        if (value !== password) return 'Passwords do not match';
+        return '';
+      default:
+        return '';
     }
+  };
 
-    if (!password) {
-      formErrors.password = 'Password is required';
-    } else if (password.length < 8) {
-      formErrors.password = 'Password must be at least 8 characters long';
+  // Handle real time validation on change
+  const handleChange = (fieldName, value) => {
+    if (fieldName === 'name') setName(value);
+    if (fieldName === 'email') setEmail(value);
+    if (fieldName === 'password') setPassword(value);
+    if (fieldName === 'confirmPassword') setConfirmPassword(value);
+
+    if (touched[fieldName]) {
+      setErrors((prev) => ({
+        ...prev,
+        [fieldName]: validateField(fieldName, value),
+      }));
     }
+  };
 
-    if (!confirmPassword) {
-      formErrors.confirmPassword = 'Please confirm your password';
-    } else if (password !== confirmPassword) {
-      formErrors.confirmPassword = 'Passwords do not match';
-    }
+  // Mark field as touched on blur
+  const handleBlur = (fieldName) => {
+    setTouched((prev) => ({ ...prev, [fieldName]: true }));
+    const value =
+      fieldName === 'name' ? name :
+      fieldName === 'email' ? email :
+      fieldName === 'password' ? password :
+      confirmPassword;
+    setErrors((prev) => ({
+      ...prev,
+      [fieldName]: validateField(fieldName, value),
+    }));
+  };
 
+  // Validate all fields on submit
+  const validateForm = () => {
+    const allTouched = { name: true, email: true, password: true, confirmPassword: true };
+    setTouched(allTouched);
+    const formErrors = {
+      name: validateField('name', name),
+      email: validateField('email', email),
+      password: validateField('password', password),
+      confirmPassword: validateField('confirmPassword', confirmPassword),
+    };
     setErrors(formErrors);
-    return Object.keys(formErrors).length === 0;
+    return !Object.values(formErrors).some(Boolean);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setApiErrors({});
-
     if (!validateForm()) return;
 
     setLoading(true);
@@ -64,6 +138,15 @@ const Register = () => {
       setLoading(false);
     }
   };
+
+  const inputClass = (fieldName) =>
+    `w-full pl-11 pr-10 py-2.5 bg-slate-900/80 border rounded-xl text-slate-100 placeholder-slate-500 text-sm font-medium transition-all focus:bg-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none ${
+      touched[fieldName] && errors[fieldName]
+        ? 'border-rose-500'
+        : touched[fieldName] && !errors[fieldName]
+        ? 'border-emerald-500'
+        : 'border-slate-800'
+    }`;
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -82,14 +165,14 @@ const Register = () => {
         <div className="glass-panel p-8 rounded-2xl shadow-xl shadow-slate-950/50">
 
           {apiErrors.general && (
-            <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3 text-rose-300 text-sm animate-fade-in">
+            <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3 text-rose-300 text-sm">
               <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
               <span>{apiErrors.general}</span>
             </div>
           )}
 
           {apiErrors.non_field_errors && (
-            <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3 text-rose-300 text-sm animate-fade-in">
+            <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3 text-rose-300 text-sm">
               <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
               <span>{apiErrors.non_field_errors.join(' ')}</span>
             </div>
@@ -99,26 +182,29 @@ const Register = () => {
 
             {/* Name field */}
             <div>
-              <label htmlFor="name" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                 Full Name
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <UserIcon className="h-4.5 w-4.5" />
+                  <UserIcon className="h-4 w-4" />
                 </div>
                 <input
-                  id="name"
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className={`w-full pl-11 pr-4 py-2.5 bg-slate-900/80 border rounded-xl text-slate-100 placeholder-slate-500 text-sm font-medium transition-all focus:bg-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none ${
-                    errors.name ? 'border-rose-500' : 'border-slate-800'
-                  }`}
+                  onChange={(e) => handleChange('name', e.target.value)}
+                  onBlur={() => handleBlur('name')}
+                  className={inputClass('name')}
                   placeholder="John Doe"
                   disabled={loading}
                 />
+                {touched.name && !errors.name && (
+                  <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-emerald-500">
+                    <CheckCircle className="h-4 w-4" />
+                  </div>
+                )}
               </div>
-              {errors.name && (
+              {touched.name && errors.name && (
                 <p className="mt-1 text-xs text-rose-400 font-medium flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" /> {errors.name}
                 </p>
@@ -127,84 +213,139 @@ const Register = () => {
 
             {/* Email field */}
             <div>
-              <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                 Email Address
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Mail className="h-4.5 w-4.5" />
+                  <Mail className="h-4 w-4" />
                 </div>
                 <input
-                  id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`w-full pl-11 pr-4 py-2.5 bg-slate-900/80 border rounded-xl text-slate-100 placeholder-slate-500 text-sm font-medium transition-all focus:bg-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none ${
-                    errors.email || apiErrors.email ? 'border-rose-500' : 'border-slate-800'
-                  }`}
+                  onChange={(e) => handleChange('email', e.target.value)}
+                  onBlur={() => handleBlur('email')}
+                  className={inputClass('email')}
                   placeholder="name@gmail.com"
                   disabled={loading}
                 />
+                {touched.email && !errors.email && (
+                  <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-emerald-500">
+                    <CheckCircle className="h-4 w-4" />
+                  </div>
+                )}
               </div>
-              {(errors.email || apiErrors.email) && (
+              {touched.email && errors.email && (
                 <p className="mt-1 text-xs text-rose-400 font-medium flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" /> {errors.email || apiErrors.email?.join(' ')}
+                  <AlertCircle className="h-3 w-3" /> {errors.email}
                 </p>
               )}
             </div>
 
             {/* Password field */}
             <div>
-              <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                 Password
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Lock className="h-4.5 w-4.5" />
+                  <Lock className="h-4 w-4" />
                 </div>
                 <input
-                  id="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={`w-full pl-11 pr-4 py-2.5 bg-slate-900/80 border rounded-xl text-slate-100 placeholder-slate-500 text-sm font-medium transition-all focus:bg-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none ${
-                    errors.password || apiErrors.password ? 'border-rose-500' : 'border-slate-800'
-                  }`}
+                  onChange={(e) => handleChange('password', e.target.value)}
+                  onBlur={() => handleBlur('password')}
+                  className={inputClass('password')}
                   placeholder="Min 8 characters"
                   disabled={loading}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-              {(errors.password || apiErrors.password) && (
+
+              {/* Password strength bar */}
+              {password && (
+                <div className="mt-2">
+                  <div className="flex gap-1 mb-1">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div
+                        key={i}
+                        className={`h-1 flex-1 rounded-full transition-all ${
+                          i <= passwordStrength.score ? strengthInfo.color : 'bg-slate-700'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Strength: <span className={`font-semibold ${
+                      passwordStrength.score <= 2 ? 'text-rose-400' :
+                      passwordStrength.score === 3 ? 'text-yellow-400' : 'text-emerald-400'
+                    }`}>{strengthInfo.label}</span>
+                  </p>
+                  <div className="mt-2 grid grid-cols-2 gap-1">
+                    {[
+                      { key: 'length', label: '8+ characters' },
+                      { key: 'uppercase', label: 'Uppercase letter' },
+                      { key: 'number', label: 'Number' },
+                      { key: 'special', label: 'Special character' },
+                    ].map((check) => (
+                      <p key={check.key} className={`text-xs flex items-center gap-1 ${
+                        passwordStrength.checks[check.key] ? 'text-emerald-400' : 'text-slate-500'
+                      }`}>
+                        {passwordStrength.checks[check.key] ? '✓' : '○'} {check.label}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {touched.password && errors.password && (
                 <p className="mt-1 text-xs text-rose-400 font-medium flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" /> {errors.password || apiErrors.password?.join(' ')}
+                  <AlertCircle className="h-3 w-3" /> {errors.password}
                 </p>
               )}
             </div>
 
             {/* Confirm Password field */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                 Confirm Password
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Lock className="h-4.5 w-4.5" />
+                  <Lock className="h-4 w-4" />
                 </div>
                 <input
-                  id="confirmPassword"
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={`w-full pl-11 pr-4 py-2.5 bg-slate-900/80 border rounded-xl text-slate-100 placeholder-slate-500 text-sm font-medium transition-all focus:bg-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none ${
-                    errors.confirmPassword || apiErrors.confirm_password ? 'border-rose-500' : 'border-slate-800'
-                  }`}
+                  onChange={(e) => handleChange('confirmPassword', e.target.value)}
+                  onBlur={() => handleBlur('confirmPassword')}
+                  className={inputClass('confirmPassword')}
                   placeholder="Confirm password"
                   disabled={loading}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-              {(errors.confirmPassword || apiErrors.confirm_password) && (
+              {touched.confirmPassword && errors.confirmPassword && (
                 <p className="mt-1 text-xs text-rose-400 font-medium flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" /> {errors.confirmPassword || apiErrors.confirm_password?.join(' ')}
+                  <AlertCircle className="h-3 w-3" /> {errors.confirmPassword}
+                </p>
+              )}
+              {touched.confirmPassword && !errors.confirmPassword && confirmPassword && (
+                <p className="mt-1 text-xs text-emerald-400 font-medium flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" /> Passwords match!
                 </p>
               )}
             </div>

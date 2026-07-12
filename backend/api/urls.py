@@ -5,6 +5,7 @@ from .views import (
     RegisterView,
     LoginView,
     MeView,
+    UpdateProfileView,
     UserBookViewSet,
     UserRentalViewSet,
     AdminDashboardView,
@@ -27,6 +28,7 @@ urlpatterns = [
     path('auth/register/', RegisterView.as_view(), name='auth-register'),
     path('auth/login/', LoginView.as_view(), name='auth-login'),
     path('auth/me/', MeView.as_view(), name='auth-me'),
+    path('auth/profile/update/', UpdateProfileView.as_view(), name='auth-profile-update'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='auth-token-refresh'),
 
     # Admin Dashboard & Users

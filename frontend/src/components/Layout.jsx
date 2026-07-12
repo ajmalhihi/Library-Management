@@ -28,7 +28,6 @@ export const Layout = ({ children }) => {
 
   const isActive = (path) => location.pathname === path;
 
-  // Determine navigation links based on user role
   const getNavLinks = () => {
     if (user?.role === 'ADMIN') {
       return [
@@ -42,6 +41,7 @@ export const Layout = ({ children }) => {
         { name: 'My Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { name: 'Books Catalogue', path: '/books', icon: BookOpen },
         { name: 'My History', path: '/history', icon: History },
+        { name: 'My Profile', path: '/profile', icon: UserIcon },
       ];
     }
   };
@@ -50,9 +50,8 @@ export const Layout = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-transparent flex flex-col md:flex-row text-slate-100">
-      {/* ==========================================
-          DESKTOP SIDEBAR
-          ========================================== */}
+
+      {/* DESKTOP SIDEBAR */}
       <aside className="hidden md:flex flex-col w-64 glass-panel border-r border-slate-800 shrink-0 select-none">
         {/* Brand Header */}
         <div className="p-6 border-b border-slate-800/80 flex items-center gap-3">
@@ -68,7 +67,9 @@ export const Layout = ({ children }) => {
         {/* User Mini Profile */}
         <div className="p-4 mx-4 my-6 bg-slate-900/60 border border-slate-800/50 rounded-xl flex items-center gap-3">
           <div className="h-10 w-10 rounded-full bg-indigo-500/10 flex items-center justify-center border border-indigo-500/30">
-            <UserIcon className="h-5 w-5 text-indigo-400" />
+            <span className="text-lg font-bold text-indigo-400">
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </span>
           </div>
           <div className="truncate">
             <h4 className="text-sm font-semibold text-slate-200 truncate">{user?.name}</h4>
@@ -96,8 +97,8 @@ export const Layout = ({ children }) => {
                 key={link.path}
                 to={link.path}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  active 
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-indigo-600/25 border border-indigo-500/35' 
+                  active
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-indigo-600/25 border border-indigo-500/35'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent'
                 }`}
               >
@@ -120,9 +121,7 @@ export const Layout = ({ children }) => {
         </div>
       </aside>
 
-      {/* ==========================================
-          MOBILE NAVIGATION BAR
-          ========================================== */}
+      {/* MOBILE NAVIGATION BAR */}
       <div className="md:hidden glass-panel border-b border-slate-800 w-full flex items-center justify-between px-6 py-4 select-none shrink-0 z-50">
         <div className="flex items-center gap-3">
           <div className="bg-gradient-to-tr from-fuchsia-600 to-indigo-600 p-1.5 rounded text-white">
@@ -140,8 +139,8 @@ export const Layout = ({ children }) => {
 
       {/* Mobile Drawer Backdrop */}
       {mobileMenuOpen && (
-        <div 
-          className="md:hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40" 
+        <div
+          className="md:hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -161,8 +160,10 @@ export const Layout = ({ children }) => {
         </div>
 
         <div className="p-4 mx-4 my-4 bg-slate-900/60 border border-slate-800 rounded-lg flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-indigo-500/10 flex items-center justify-center">
-            <UserIcon className="h-4 w-4 text-indigo-400" />
+          <div className="h-8 w-8 rounded-full bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
+            <span className="text-sm font-bold text-indigo-400">
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </span>
           </div>
           <div className="truncate">
             <h4 className="text-xs font-semibold text-slate-200 truncate">{user?.name}</h4>
@@ -180,8 +181,8 @@ export const Layout = ({ children }) => {
                 to={link.path}
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                  active 
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white' 
+                  active
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
                     : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
                 }`}
               >
@@ -194,10 +195,7 @@ export const Layout = ({ children }) => {
 
         <div className="p-4 border-t border-slate-800">
           <button
-            onClick={() => {
-              setMobileMenuOpen(false);
-              handleLogout();
-            }}
+            onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
             className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-rose-400 hover:bg-rose-500/10"
           >
             <LogOut className="h-4 w-4" />
@@ -206,9 +204,7 @@ export const Layout = ({ children }) => {
         </div>
       </div>
 
-      {/* ==========================================
-          MAIN CONTENT CONTAINER
-          ========================================== */}
+      {/* MAIN CONTENT */}
       <main className="flex-1 flex flex-col min-w-0 min-h-screen overflow-y-auto bg-transparent p-6 md:p-8 animate-fade-in">
         {children}
       </main>

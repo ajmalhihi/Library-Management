@@ -16,12 +16,10 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('role', 'ADMIN')
-
         if extra_fields.get('is_staff') is not True:
             raise ValueError('Superuser must have is_staff=True.')
         if extra_fields.get('is_superuser') is not True:
             raise ValueError('Superuser must have is_superuser=True.')
-
         return self.create_user(email, password, **extra_fields)
 
 class User(AbstractUser):
@@ -29,14 +27,11 @@ class User(AbstractUser):
         ('ADMIN', 'Admin'),
         ('USER', 'User'),
     ]
-
     username = None
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=150)
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='USER')
-
     objects = UserManager()
-
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name']
 
@@ -63,17 +58,46 @@ class Rental(models.Model):
     due_date = models.DateField()
     return_date = models.DateField(null=True, blank=True)
     is_returned = models.BooleanField(default=False)
+    renewal_count = models.IntegerField(default=0)
+    auto_returned = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if not self.id and not self.due_date:
             self.due_date = date.today() + timedelta(days=14)
         super().save(*args, **kwargs)
 
+    def check_auto_return(self):
+        """Auto return book if due date has passed"""
+        if not self.is_returned and date.today() > self.due_date:
+            self.is_returned = True
+            self.auto_returned = True
+            self.return_date = self.due_date
+            self.save()
+            self.book.is_available = True
+            self.book.save()
+            return True
+        return False
+
     @property
     def is_overdue(self):
         if not self.is_returned:
             return date.today() > self.due_date
         return False
+
+    @property
+    def days_remaining(self):
+        if not self.is_returned:
+            delta = self.due_date - date.today()
+            return max(delta.days, 0)
+        return 0
+
+    @property
+    def can_renew(self):
+        return (
+            not self.is_returned and
+            not self.is_overdue and
+            self.renewal_count < 2
+        )
 
     def __str__(self):
         return f"{self.user.email} borrowed {self.book.title}"
